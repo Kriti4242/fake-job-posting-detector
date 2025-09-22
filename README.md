@@ -21,16 +21,6 @@ Users can input a job description to predict whether it is genuine or fake, with
 ✅ Data preprocessing and feature engineering
 
 
-📂 Project Structure
-project/
-│
-├── main.py                # Streamlit main app
-├── model.pkl              # Pre-trained ML model
-├── utils.py               # Helper functions for preprocessing and evaluation
-├── data/
-│   └── job_data.csv       # Dataset
-└── README.md
-
 
 🛠 Installation
 
@@ -49,6 +39,8 @@ source venv/bin/activate      # Windows: venv\Scripts\activate
 Install dependencies:
 
 pip install -r requirements.txt
+
+
 
 
 🚀 Usage
@@ -101,3 +93,4 @@ joblib
 
 
 This project is licensed under the MIT License.
+
