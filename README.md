@@ -1,6 +1,6 @@
 🚨 Fake Job Detection & Analysis
-🔍 Overview
 
+🔍 Overview
 This project detects and analyzes fake job postings using Machine Learning.
 It combines data scraping, feature engineering, model training, and interactive visualization using Streamlit.
 
@@ -98,5 +98,6 @@ joblib
 
 
 ⚖ License
+
 
 This project is licensed under the MIT License.
