@@ -181,28 +181,29 @@ def predict(text):
         st.error(f"⚠️ Prediction failed: {e}")
         return "Error", 0.0
 
+
+# -------------------- SHAP Initialization (Fixed for Deployment) --------------------
 import shap
 import numpy as np
 
-# --- SHAP Initialization Fix for XGBoost ---
 st.write("⏳ Initializing SHAP explainer... please wait.")
+explainer = None
 
 try:
-    background_data = model_bundle.get("X_test")
-    if hasattr(background_data, "toarray"):
-        background_data = background_data[:100].toarray()
-    else:
-        background_data = np.array(background_data)[:100]
-except Exception:
-    background_data = np.random.randn(100, 50)  # fallback sample
-
-# ✅ Use TreeExplainer (simplified for deployment compatibility)
-try:
+    # ✅ Try TreeExplainer first — best for XGBoost
     explainer = shap.TreeExplainer(model)
-    st.write("✅ SHAP TreeExplainer loaded successfully.")
+    st.success("✅ SHAP TreeExplainer initialized successfully!")
 except Exception as e:
-    st.warning(f"⚠️ SHAP initialization skipped due to compatibility issue: {e}")
-    explainer = None
+    # ⚠️ If it fails (common on Streamlit Cloud), fall back safely
+    st.warning(f"⚠️ TreeExplainer failed due to compatibility issue: {e}")
+    st.info("🔁 Switching to KernelExplainer (safe fallback mode)...")
+    try:
+        background_data = np.random.randn(100, 50)
+        explainer = shap.KernelExplainer(model.predict_proba, background_data)
+        st.success("✅ KernelExplainer initialized successfully!")
+    except Exception as e2:
+        st.error(f"❌ SHAP initialization failed completely: {e2}")
+        explainer = None
 
 
 
@@ -404,6 +405,7 @@ st.pyplot(fig)
 
 st.markdown("---")
 st.markdown("✅ **This model is trained with supervised ML and TF-IDF features. Use results for evaluation purposes.**")
+
 
 
 
