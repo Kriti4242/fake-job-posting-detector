@@ -182,30 +182,22 @@ def predict(text):
         return "Error", 0.0
 
 
-# -------------------- SHAP Initialization (Fully Compatible for Deployment) --------------------
+# -------------------- SHAP Initialization (Clean Production Version) --------------------
 import shap
 import numpy as np
 
-st.write("⏳ Initializing SHAP explainer... please wait.")
 explainer = None
-
 try:
-    # ✅ Try TreeExplainer first — best for XGBoost
+    # Try XGBoost TreeExplainer
     explainer = shap.TreeExplainer(model)
-    st.success("✅ SHAP TreeExplainer initialized successfully!")
-except Exception as e:
-    st.warning(f"⚠️ TreeExplainer failed due to compatibility issue: {e}")
-    st.info("🔁 Switching to KernelExplainer (safe fallback mode)...")
+except Exception:
     try:
-        # ✅ Use correct feature size based on vectorizer
+        # Safe fallback using KernelExplainer
         n_features = len(vectorizer.get_feature_names_out()) if hasattr(vectorizer, "get_feature_names_out") else 3000
         background_data = np.random.randn(50, n_features)
         explainer = shap.KernelExplainer(model.predict_proba, background_data)
-        st.success("✅ KernelExplainer initialized successfully!")
-    except Exception as e2:
-        st.error(f"❌ SHAP initialization failed completely: {e2}")
+    except Exception:
         explainer = None
-
 
 
 
@@ -407,6 +399,7 @@ st.pyplot(fig)
 
 st.markdown("---")
 st.markdown("✅ **This model is trained with supervised ML and TF-IDF features. Use results for evaluation purposes.**")
+
 
 
 
