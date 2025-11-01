@@ -196,10 +196,13 @@ try:
 except Exception:
     background_data = np.random.randn(100, 50)  # fallback sample
 
-# ✅ Use TreeExplainer (specific to XGBoost) instead of generic Explainer
-explainer = shap.TreeExplainer(model, data=background_data)
-
-st.write("✅ SHAP TreeExplainer loaded successfully.")
+# ✅ Use TreeExplainer (simplified for deployment compatibility)
+try:
+    explainer = shap.TreeExplainer(model)
+    st.write("✅ SHAP TreeExplainer loaded successfully.")
+except Exception as e:
+    st.warning(f"⚠️ SHAP initialization skipped due to compatibility issue: {e}")
+    explainer = None
 
 
 
@@ -401,5 +404,6 @@ st.pyplot(fig)
 
 st.markdown("---")
 st.markdown("✅ **This model is trained with supervised ML and TF-IDF features. Use results for evaluation purposes.**")
+
 
 
