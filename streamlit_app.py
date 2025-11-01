@@ -278,39 +278,76 @@ if st.button("Predict Single Job"):
         try:
             dense_sample = vectorizer.transform([text]).toarray().astype(np.float32)
 
-            import shap
+            def _safe_float_from_str(s):
+                try:
+                    if isinstance(s, str):
+                        s2 = s.strip()
+                        if s2.startswith("[") and s2.endswith("]"):
+                            s2 = s2[1:-1]
+                        return float(s2)
+                    return float(s)
+                except Exception:
+                    return None
 
-            shap_explainer = None
-            shap_values = None
+            def _sanitize_xgb_model(m):
+                try:
+                    if hasattr(m, "get_xgb_params"):
+                        params = m.get_xgb_params()
+                        if "base_score" in params:
+                            conv = _safe_float_from_str(params["base_score"])
+                            if conv is not None:
+                                m.set_params(**{"base_score": conv})
+                except Exception:
+                    pass
 
-            # Try TreeExplainer safely
+            _sanitize_xgb_model(model)
+
+            shap_arr = None
+
             try:
-                shap_explainer = shap.TreeExplainer(model)
-                shap_values = shap_explainer(dense_sample)
-                shap_arr = shap_values.values[0] if hasattr(shap_values, "values") else np.array(shap_values).flatten()
+                # Try TreeExplainer
+                tree_explainer = shap.TreeExplainer(model)
+                out = tree_explainer(dense_sample)
+                shap_arr = out.values[0] if hasattr(out, "values") else np.array(out).flatten()
             except Exception:
-                # Fallback to KernelExplainer
-                background = np.random.randn(5, dense_sample.shape[1]).astype(np.float32)
-                shap_explainer = shap.KernelExplainer(lambda x: model.predict_proba(x)[:, 1], background)
-                shap_vals = shap_explainer.shap_values(dense_sample, nsamples=50)
-                shap_arr = np.array(shap_vals).flatten()
+                try:
+                    # Try Booster-based TreeExplainer
+                    if hasattr(model, "get_booster"):
+                        booster = model.get_booster()
+                        tree_explainer = shap.TreeExplainer(booster)
+                        out = tree_explainer(dense_sample)
+                        shap_arr = out.values[0] if hasattr(out, "values") else np.array(out).flatten()
+                except Exception:
+                    try:
+                        # Safe Fallback to KernelExplainer
+                        n_features = dense_sample.shape[1]
+                        background = np.random.randn(10, n_features).astype(np.float32)
+                        kernel_explainer = shap.KernelExplainer(lambda x: model.predict_proba(x)[:, 1], background)
+                        shap_vals = kernel_explainer.shap_values(dense_sample, nsamples=50)
+                        shap_arr = np.array(shap_vals).flatten()
+                    except Exception:
+                        shap_arr = None
 
-            # Make feature importance DataFrame
             feature_names = vectorizer.get_feature_names_out()
-            shap_arr = shap_arr[:len(feature_names)]
-            feature_importance = pd.DataFrame({
-                "feature": feature_names,
-                "importance": shap_arr
-            }).sort_values("importance", key=abs, ascending=False).head(10)
+            if shap_arr is not None and len(shap_arr) > 0:
+                shap_arr = shap_arr[: len(feature_names)]
+                feature_importance = pd.DataFrame({
+                    "feature": feature_names,
+                    "importance": shap_arr
+                }).sort_values("importance", key=abs, ascending=False).head(10)
 
-            # Plot SHAP bar chart
-            fig, ax = plt.subplots(figsize=(8, 5))
-            sns.barplot(x="importance", y="feature", data=feature_importance, palette="coolwarm")
-            ax.set_title("Most Influential Words Detected in This Job Description")
-            st.pyplot(fig)
+                fig, ax = plt.subplots(figsize=(8, 5))
+                sns.barplot(x="importance", y="feature", data=feature_importance, palette="coolwarm")
+                ax.set_title("Most Influential Words Detected in This Job Description")
+                st.pyplot(fig)
+            else:
+                top_words = pd.Series(text.split()).value_counts().head(10)
+                fig, ax = plt.subplots(figsize=(8, 5))
+                top_words.plot(kind="barh", color="#ff6f00", ax=ax)
+                ax.set_title("Top Words (Simplified Importance)")
+                st.pyplot(fig)
 
         except Exception:
-            # Fallback (no SHAP)
             top_words = pd.Series(text.split()).value_counts().head(10)
             fig, ax = plt.subplots(figsize=(8, 5))
             top_words.plot(kind="barh", color="#ff6f00", ax=ax)
@@ -410,6 +447,7 @@ st.pyplot(fig)
 
 st.markdown("---")
 st.markdown("✅ **This model is trained with supervised ML and TF-IDF features. Use results for evaluation purposes.**")
+
 
 
 
