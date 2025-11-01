@@ -182,22 +182,24 @@ def predict(text):
         return "Error", 0.0
 
 
-# -------------------- SHAP Initialization (Clean Production Version) --------------------
+# -------------------- SHAP Initialization (Error-Proof, Clean for Deployment) --------------------
 import shap
 import numpy as np
 
 explainer = None
 try:
-    # Try XGBoost TreeExplainer
+    # Try TreeExplainer first (for XGBoost)
     explainer = shap.TreeExplainer(model)
 except Exception:
     try:
-        # Safe fallback using KernelExplainer
+        # Silent fallback for any model type
         n_features = len(vectorizer.get_feature_names_out()) if hasattr(vectorizer, "get_feature_names_out") else 3000
-        background_data = np.random.randn(50, n_features)
-        explainer = shap.KernelExplainer(model.predict_proba, background_data)
+        background_data = np.random.randn(20, n_features)
+        # KernelExplainer expects a callable that returns probabilities
+        explainer = shap.KernelExplainer(lambda x: model.predict_proba(x)[:, 1], background_data)
     except Exception:
         explainer = None
+
 
 
 
@@ -399,6 +401,7 @@ st.pyplot(fig)
 
 st.markdown("---")
 st.markdown("✅ **This model is trained with supervised ML and TF-IDF features. Use results for evaluation purposes.**")
+
 
 
 
