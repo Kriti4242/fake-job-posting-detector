@@ -182,45 +182,6 @@ def predict(text):
         return "Error", 0.0
 
 
-# -------------------- SHAP Initialization (Clean and Compatible) --------------------
-import shap
-import numpy as np
-
-def safe_float_convert(value):
-    """Fix XGBoost base_score like '[5E-1]' -> 0.5"""
-    try:
-        if isinstance(value, str) and value.startswith("[") and value.endswith("]"):
-            value = value.strip("[]")
-        return float(value)
-    except Exception:
-        return 0.5  # default fallback
-
-def safe_init_shap(model, vectorizer):
-    try:
-        # Fix base_score issue
-        if hasattr(model, "get_xgb_params"):
-            params = model.get_xgb_params()
-            if "base_score" in params:
-                params["base_score"] = safe_float_convert(params["base_score"])
-                model.set_params(**params)
-
-        # Try TreeExplainer first
-        explainer = shap.TreeExplainer(model)
-        return explainer
-    except Exception as e:
-        try:
-            # Fallback: KernelExplainer
-            n_features = len(vectorizer.get_feature_names_out()) if hasattr(vectorizer, "get_feature_names_out") else 3000
-            background_data = np.random.randn(30, n_features)
-            explainer = shap.KernelExplainer(lambda x: model.predict_proba(x)[:, 1], background_data)
-            return explainer
-        except Exception:
-            return None
-
-explainer = safe_init_shap(model, vectorizer)
-
-
-
 
 # -------------------- Model Performance --------------------
 X_test = model_bundle.get("X_test")
@@ -311,45 +272,50 @@ if st.button("Predict Single Job"):
             cols[1].markdown(f"**Company:** {details['company']}")
             cols[2].markdown(f"**Location:** {details['location']}")
 
-
         # ---------- SHAP Top Features ----------
         st.subheader("🔎 Top Features Influencing Prediction")
 
         try:
-            if explainer is not None:
-                # Convert text to feature vector
-                dense_sample = vectorizer.transform([text]).toarray()
+            dense_sample = vectorizer.transform([text]).toarray().astype(np.float32)
 
-                # Compute SHAP values safely
-                shap_values = explainer.shap_values(dense_sample) if hasattr(explainer, "shap_values") else explainer(dense_sample)
+            import shap
 
-                # Handle various output shapes
-                shap_array = shap_values[0] if isinstance(shap_values, list) else getattr(shap_values, "values", shap_values)
+            shap_explainer = None
+            shap_values = None
 
-                # Limit feature names to vectorizer size
-                feature_names = vectorizer.get_feature_names_out()
-                shap_array = shap_array[:len(feature_names)]
+            # Try TreeExplainer safely
+            try:
+                shap_explainer = shap.TreeExplainer(model)
+                shap_values = shap_explainer(dense_sample)
+                shap_arr = shap_values.values[0] if hasattr(shap_values, "values") else np.array(shap_values).flatten()
+            except Exception:
+                # Fallback to KernelExplainer
+                background = np.random.randn(5, dense_sample.shape[1]).astype(np.float32)
+                shap_explainer = shap.KernelExplainer(lambda x: model.predict_proba(x)[:, 1], background)
+                shap_vals = shap_explainer.shap_values(dense_sample, nsamples=50)
+                shap_arr = np.array(shap_vals).flatten()
 
-                # Create dataframe for top 10 features
-                feature_importance = pd.DataFrame({
-                    "feature": feature_names,
-                    "importance": shap_array
-                }).sort_values("importance", key=abs, ascending=False).head(10)
+            # Make feature importance DataFrame
+            feature_names = vectorizer.get_feature_names_out()
+            shap_arr = shap_arr[:len(feature_names)]
+            feature_importance = pd.DataFrame({
+                "feature": feature_names,
+                "importance": shap_arr
+            }).sort_values("importance", key=abs, ascending=False).head(10)
 
-                # Plot top features
-                fig, ax = plt.subplots(figsize=(8, 5))
-                sns.barplot(
-                    x="importance",
-                    y="feature",
-                    data=feature_importance,
-                    palette="coolwarm"
-                )
-                ax.set_title("Most Influential Words Detected in This Job Description")
-                st.pyplot(fig)
-            else:
-                st.markdown("Explainability temporarily unavailable.")
+            # Plot SHAP bar chart
+            fig, ax = plt.subplots(figsize=(8, 5))
+            sns.barplot(x="importance", y="feature", data=feature_importance, palette="coolwarm")
+            ax.set_title("Most Influential Words Detected in This Job Description")
+            st.pyplot(fig)
+
         except Exception:
-            st.markdown("Explainability temporarily unavailable.")
+            # Fallback (no SHAP)
+            top_words = pd.Series(text.split()).value_counts().head(10)
+            fig, ax = plt.subplots(figsize=(8, 5))
+            top_words.plot(kind="barh", color="#ff6f00", ax=ax)
+            ax.set_title("Top Words (Simplified Importance)")
+            st.pyplot(fig)
 
 
 # -------------------- Batch Prediction --------------------
@@ -444,6 +410,7 @@ st.pyplot(fig)
 
 st.markdown("---")
 st.markdown("✅ **This model is trained with supervised ML and TF-IDF features. Use results for evaluation purposes.**")
+
 
 
 
