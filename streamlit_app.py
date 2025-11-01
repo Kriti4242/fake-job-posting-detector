@@ -182,23 +182,43 @@ def predict(text):
         return "Error", 0.0
 
 
-# -------------------- SHAP Initialization (Final Stable Version) --------------------
+# -------------------- SHAP Initialization (Clean and Compatible) --------------------
 import shap
 import numpy as np
 
-def safe_init_shap(model, vectorizer):
-    """Safely initialize SHAP, returning None if not supported."""
+def safe_float_convert(value):
+    """Fix XGBoost base_score like '[5E-1]' -> 0.5"""
     try:
-        return shap.TreeExplainer(model)
+        if isinstance(value, str) and value.startswith("[") and value.endswith("]"):
+            value = value.strip("[]")
+        return float(value)
     except Exception:
+        return 0.5  # default fallback
+
+def safe_init_shap(model, vectorizer):
+    try:
+        # Fix base_score issue
+        if hasattr(model, "get_xgb_params"):
+            params = model.get_xgb_params()
+            if "base_score" in params:
+                params["base_score"] = safe_float_convert(params["base_score"])
+                model.set_params(**params)
+
+        # Try TreeExplainer first
+        explainer = shap.TreeExplainer(model)
+        return explainer
+    except Exception as e:
         try:
+            # Fallback: KernelExplainer
             n_features = len(vectorizer.get_feature_names_out()) if hasattr(vectorizer, "get_feature_names_out") else 3000
-            background_data = np.random.randn(20, n_features)
-            return shap.KernelExplainer(lambda x: model.predict_proba(x)[:, 1], background_data)
+            background_data = np.random.randn(30, n_features)
+            explainer = shap.KernelExplainer(lambda x: model.predict_proba(x)[:, 1], background_data)
+            return explainer
         except Exception:
             return None
 
 explainer = safe_init_shap(model, vectorizer)
+
 
 
 
@@ -291,33 +311,34 @@ if st.button("Predict Single Job"):
             cols[1].markdown(f"**Company:** {details['company']}")
             cols[2].markdown(f"**Location:** {details['location']}")
 
-        # ---------- SHAP Top Features ----------
-       st.subheader("🔎 Top Features Influencing Prediction")
+              # ---------- SHAP Top Features ----------
+        st.subheader("🔎 Top Features Influencing Prediction")
 
-if explainer is not None:
-    try:
-        dense_sample = vectorizer.transform([text]).toarray()
-        shap_values = explainer(dense_sample)
-        feature_names = vectorizer.get_feature_names_out()
+        if explainer is not None:
+            try:
+                dense_sample = vectorizer.transform([text]).toarray()
+                shap_values = explainer(dense_sample)
+                feature_names = vectorizer.get_feature_names_out()
 
-        feature_importance = pd.DataFrame({
-            "feature": feature_names,
-            "importance": shap_values.values[0]
-        }).sort_values("importance", key=abs, ascending=False).head(10)
+                feature_importance = pd.DataFrame({
+                    "feature": feature_names,
+                    "importance": shap_values.values[0]
+                }).sort_values("importance", key=abs, ascending=False).head(10)
 
-        fig, ax = plt.subplots(figsize=(8,5))
-        sns.barplot(
-            x="importance",
-            y="feature",
-            data=feature_importance,
-            palette="coolwarm"
-        )
-        ax.set_title("Most Influential Words Detected in This Job Description")
-        st.pyplot(fig)
-    except Exception:
-        st.info("ℹ️ Explainability temporarily unavailable for this prediction.")
-else:
-    st.info("ℹ️ SHAP Explainability is disabled in this environment.")
+                fig, ax = plt.subplots(figsize=(8,5))
+                sns.barplot(
+                    x="importance",
+                    y="feature",
+                    data=feature_importance,
+                    palette="coolwarm"
+                )
+                ax.set_title("Most Influential Words Detected in This Job Description")
+                st.pyplot(fig)
+            except Exception:
+                st.info("ℹ️ Explainability temporarily unavailable for this prediction.")
+        else:
+            st.info("ℹ️ SHAP Explainability is disabled in this environment.")
+
 
 
 # -------------------- Batch Prediction --------------------
@@ -412,6 +433,7 @@ st.pyplot(fig)
 
 st.markdown("---")
 st.markdown("✅ **This model is trained with supervised ML and TF-IDF features. Use results for evaluation purposes.**")
+
 
 
 
