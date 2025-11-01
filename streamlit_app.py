@@ -182,7 +182,7 @@ def predict(text):
         return "Error", 0.0
 
 
-# -------------------- SHAP Initialization (Fixed for Deployment) --------------------
+# -------------------- SHAP Initialization (Fully Compatible for Deployment) --------------------
 import shap
 import numpy as np
 
@@ -194,16 +194,18 @@ try:
     explainer = shap.TreeExplainer(model)
     st.success("✅ SHAP TreeExplainer initialized successfully!")
 except Exception as e:
-    # ⚠️ If it fails (common on Streamlit Cloud), fall back safely
     st.warning(f"⚠️ TreeExplainer failed due to compatibility issue: {e}")
     st.info("🔁 Switching to KernelExplainer (safe fallback mode)...")
     try:
-        background_data = np.random.randn(100, 50)
+        # ✅ Use correct feature size based on vectorizer
+        n_features = len(vectorizer.get_feature_names_out()) if hasattr(vectorizer, "get_feature_names_out") else 3000
+        background_data = np.random.randn(50, n_features)
         explainer = shap.KernelExplainer(model.predict_proba, background_data)
         st.success("✅ KernelExplainer initialized successfully!")
     except Exception as e2:
         st.error(f"❌ SHAP initialization failed completely: {e2}")
         explainer = None
+
 
 
 
@@ -405,6 +407,7 @@ st.pyplot(fig)
 
 st.markdown("---")
 st.markdown("✅ **This model is trained with supervised ML and TF-IDF features. Use results for evaluation purposes.**")
+
 
 
 
