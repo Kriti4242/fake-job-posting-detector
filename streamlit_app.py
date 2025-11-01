@@ -182,24 +182,23 @@ def predict(text):
         return "Error", 0.0
 
 
-# -------------------- SHAP Initialization (Error-Proof, Clean for Deployment) --------------------
+# -------------------- SHAP Initialization (Final Stable Version) --------------------
 import shap
 import numpy as np
 
-explainer = None
-try:
-    # Try TreeExplainer first (for XGBoost)
-    explainer = shap.TreeExplainer(model)
-except Exception:
+def safe_init_shap(model, vectorizer):
+    """Safely initialize SHAP, returning None if not supported."""
     try:
-        # Silent fallback for any model type
-        n_features = len(vectorizer.get_feature_names_out()) if hasattr(vectorizer, "get_feature_names_out") else 3000
-        background_data = np.random.randn(20, n_features)
-        # KernelExplainer expects a callable that returns probabilities
-        explainer = shap.KernelExplainer(lambda x: model.predict_proba(x)[:, 1], background_data)
+        return shap.TreeExplainer(model)
     except Exception:
-        explainer = None
+        try:
+            n_features = len(vectorizer.get_feature_names_out()) if hasattr(vectorizer, "get_feature_names_out") else 3000
+            background_data = np.random.randn(20, n_features)
+            return shap.KernelExplainer(lambda x: model.predict_proba(x)[:, 1], background_data)
+        except Exception:
+            return None
 
+explainer = safe_init_shap(model, vectorizer)
 
 
 
@@ -293,21 +292,33 @@ if st.button("Predict Single Job"):
             cols[2].markdown(f"**Location:** {details['location']}")
 
         # ---------- SHAP Top Features ----------
-        st.subheader("🔎 Top Features Influencing Prediction")
-        try:
-            dense_sample = vectorizer.transform([text]).toarray()
-            shap_values = explainer(dense_sample)
-            feature_names = vectorizer.get_feature_names_out()
-            feature_importance = pd.DataFrame({
-                "feature": feature_names,
-                "importance": shap_values.values[0]
-            }).sort_values("importance", key=abs, ascending=False).head(10)
-            fig, ax = plt.subplots(figsize=(8,5))
-            sns.barplot(x="importance", y="feature", data=feature_importance, palette="Blues")
-            ax.set_title("Top Features Influencing Prediction")
-            st.pyplot(fig)
-        except Exception as e:
-            st.warning(f"Could not generate SHAP explanation: {e}")
+       st.subheader("🔎 Top Features Influencing Prediction")
+
+if explainer is not None:
+    try:
+        dense_sample = vectorizer.transform([text]).toarray()
+        shap_values = explainer(dense_sample)
+        feature_names = vectorizer.get_feature_names_out()
+
+        feature_importance = pd.DataFrame({
+            "feature": feature_names,
+            "importance": shap_values.values[0]
+        }).sort_values("importance", key=abs, ascending=False).head(10)
+
+        fig, ax = plt.subplots(figsize=(8,5))
+        sns.barplot(
+            x="importance",
+            y="feature",
+            data=feature_importance,
+            palette="coolwarm"
+        )
+        ax.set_title("Most Influential Words Detected in This Job Description")
+        st.pyplot(fig)
+    except Exception:
+        st.info("ℹ️ Explainability temporarily unavailable for this prediction.")
+else:
+    st.info("ℹ️ SHAP Explainability is disabled in this environment.")
+
 
 # -------------------- Batch Prediction --------------------
 st.markdown("<a id='batch-prediction'></a>", unsafe_allow_html=True)
@@ -401,6 +412,7 @@ st.pyplot(fig)
 
 st.markdown("---")
 st.markdown("✅ **This model is trained with supervised ML and TF-IDF features. Use results for evaluation purposes.**")
+
 
 
 
