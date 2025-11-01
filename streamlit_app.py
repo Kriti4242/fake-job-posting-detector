@@ -311,21 +311,31 @@ if st.button("Predict Single Job"):
             cols[1].markdown(f"**Company:** {details['company']}")
             cols[2].markdown(f"**Location:** {details['location']}")
 
-              # ---------- SHAP Top Features ----------
+                     # ---------- SHAP Top Features ----------
         st.subheader("🔎 Top Features Influencing Prediction")
 
         if explainer is not None:
             try:
                 dense_sample = vectorizer.transform([text]).toarray()
                 shap_values = explainer(dense_sample)
+
+                # Handle different SHAP output formats
+                if hasattr(shap_values, "values"):
+                    shap_vals = shap_values.values[0]
+                else:
+                    shap_vals = shap_values[0]
+
                 feature_names = vectorizer.get_feature_names_out()
+
+                # Align SHAP values to feature length
+                shap_vals = shap_vals[:len(feature_names)]
 
                 feature_importance = pd.DataFrame({
                     "feature": feature_names,
-                    "importance": shap_values.values[0]
+                    "importance": shap_vals
                 }).sort_values("importance", key=abs, ascending=False).head(10)
 
-                fig, ax = plt.subplots(figsize=(8,5))
+                fig, ax = plt.subplots(figsize=(8, 5))
                 sns.barplot(
                     x="importance",
                     y="feature",
@@ -334,11 +344,11 @@ if st.button("Predict Single Job"):
                 )
                 ax.set_title("Most Influential Words Detected in This Job Description")
                 st.pyplot(fig)
-            except Exception:
-                st.info("ℹ️ Explainability temporarily unavailable for this prediction.")
-        else:
-            st.info("ℹ️ SHAP Explainability is disabled in this environment.")
 
+            except Exception as e:
+                st.warning("⚠️ SHAP visualization could not be generated for this prediction.")
+        else:
+            st.info("ℹ️ SHAP explainability is not available in this environment.")
 
 
 # -------------------- Batch Prediction --------------------
@@ -433,6 +443,7 @@ st.pyplot(fig)
 
 st.markdown("---")
 st.markdown("✅ **This model is trained with supervised ML and TF-IDF features. Use results for evaluation purposes.**")
+
 
 
 
