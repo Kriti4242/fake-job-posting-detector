@@ -181,11 +181,26 @@ def predict(text):
         st.error(f"⚠️ Prediction failed: {e}")
         return "Error", 0.0
 
-# ⚠️ SHAP explainers should not be cached — they include non-serializable objects
-# Initialize directly instead of using @st.cache_resource
-st.write("Loading SHAP explainer... please wait.")
-explainer = shap.Explainer(model)
-st.write("✅ SHAP explainer loaded successfully.")
+import shap
+import numpy as np
+
+# --- SHAP Initialization Fix for XGBoost ---
+st.write("⏳ Initializing SHAP explainer... please wait.")
+
+try:
+    background_data = model_bundle.get("X_test")
+    if hasattr(background_data, "toarray"):
+        background_data = background_data[:100].toarray()
+    else:
+        background_data = np.array(background_data)[:100]
+except Exception:
+    background_data = np.random.randn(100, 50)  # fallback sample
+
+# ✅ Use TreeExplainer (specific to XGBoost) instead of generic Explainer
+explainer = shap.TreeExplainer(model, data=background_data)
+
+st.write("✅ SHAP TreeExplainer loaded successfully.")
+
 
 
 # -------------------- Model Performance --------------------
@@ -386,4 +401,5 @@ st.pyplot(fig)
 
 st.markdown("---")
 st.markdown("✅ **This model is trained with supervised ML and TF-IDF features. Use results for evaluation purposes.**")
+
 
