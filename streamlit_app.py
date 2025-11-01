@@ -181,10 +181,12 @@ def predict(text):
         st.error(f"⚠️ Prediction failed: {e}")
         return "Error", 0.0
 
-@st.cache_resource
-def get_explainer(_model):
-    return shap.Explainer(_model)
-explainer = get_explainer(model)
+# ⚠️ SHAP explainers should not be cached — they include non-serializable objects
+# Initialize directly instead of using @st.cache_resource
+st.write("Loading SHAP explainer... please wait.")
+explainer = shap.Explainer(model)
+st.write("✅ SHAP explainer loaded successfully.")
+
 
 # -------------------- Model Performance --------------------
 X_test = model_bundle.get("X_test")
@@ -384,3 +386,4 @@ st.pyplot(fig)
 
 st.markdown("---")
 st.markdown("✅ **This model is trained with supervised ML and TF-IDF features. Use results for evaluation purposes.**")
+
