@@ -311,30 +311,32 @@ if st.button("Predict Single Job"):
             cols[1].markdown(f"**Company:** {details['company']}")
             cols[2].markdown(f"**Location:** {details['location']}")
 
-                     # ---------- SHAP Top Features ----------
+
+        # ---------- SHAP Top Features ----------
         st.subheader("🔎 Top Features Influencing Prediction")
 
-        if explainer is not None:
-            try:
+        try:
+            if explainer is not None:
+                # Convert text to feature vector
                 dense_sample = vectorizer.transform([text]).toarray()
-                shap_values = explainer(dense_sample)
 
-                # Handle different SHAP output formats
-                if hasattr(shap_values, "values"):
-                    shap_vals = shap_values.values[0]
-                else:
-                    shap_vals = shap_values[0]
+                # Compute SHAP values safely
+                shap_values = explainer.shap_values(dense_sample) if hasattr(explainer, "shap_values") else explainer(dense_sample)
 
+                # Handle various output shapes
+                shap_array = shap_values[0] if isinstance(shap_values, list) else getattr(shap_values, "values", shap_values)
+
+                # Limit feature names to vectorizer size
                 feature_names = vectorizer.get_feature_names_out()
+                shap_array = shap_array[:len(feature_names)]
 
-                # Align SHAP values to feature length
-                shap_vals = shap_vals[:len(feature_names)]
-
+                # Create dataframe for top 10 features
                 feature_importance = pd.DataFrame({
                     "feature": feature_names,
-                    "importance": shap_vals
+                    "importance": shap_array
                 }).sort_values("importance", key=abs, ascending=False).head(10)
 
+                # Plot top features
                 fig, ax = plt.subplots(figsize=(8, 5))
                 sns.barplot(
                     x="importance",
@@ -344,11 +346,10 @@ if st.button("Predict Single Job"):
                 )
                 ax.set_title("Most Influential Words Detected in This Job Description")
                 st.pyplot(fig)
-
-            except Exception as e:
-                st.warning("⚠️ SHAP visualization could not be generated for this prediction.")
-        else:
-            st.info("ℹ️ SHAP explainability is not available in this environment.")
+            else:
+                st.markdown("Explainability temporarily unavailable.")
+        except Exception:
+            st.markdown("Explainability temporarily unavailable.")
 
 
 # -------------------- Batch Prediction --------------------
@@ -443,6 +444,7 @@ st.pyplot(fig)
 
 st.markdown("---")
 st.markdown("✅ **This model is trained with supervised ML and TF-IDF features. Use results for evaluation purposes.**")
+
 
 
 
