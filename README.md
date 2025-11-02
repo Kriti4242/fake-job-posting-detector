@@ -1,96 +1,75 @@
-🚨 Fake Job Detection & Analysis
+# 🚨 Fake Job Detection & Analysis
 
-🔍 Overview
-This project detects and analyzes fake job postings using Machine Learning.
-It combines data scraping, feature engineering, model training, and interactive visualization using Streamlit.
+## 🔍 Overview
+This project detects and analyzes **fake job postings** using **Machine Learning**.  
+It combines **data scraping**, **feature engineering**, **model training**, and **interactive visualization** using **Streamlit**.
 
-Users can input a job description to predict whether it is genuine or fake, with explainable insights via SHAP visualizations.
+Users can input a job description to predict whether it is **genuine or fake**, with explainable insights powered by **SHAP visualizations**.
 
-✨ Features
+---
 
-✅ Fake Job Detection using supervised ML algorithms
+## ✨ Features
+✅ Fake Job Detection using supervised ML algorithms  
+✅ Interactive Streamlit web app  
+✅ SHAP-based model interpretability  
+✅ Comprehensive performance metrics:
+- Accuracy  
+- Precision  
+- Recall  
+- F1 Score  
+- ROC-AUC  
+- Confusion Matrix  
+✅ Web scraping with **BeautifulSoup**  
+✅ Automated **data preprocessing** and **feature engineering**
 
-✅ Interactive Streamlit app
+---
 
-✅ SHAP visualizations for model interpretability
+## 🛠 Installation
 
-✅ Performance metrics: Accuracy, Precision, Recall, F1 Score, ROC-AUC, Confusion Matrix
+To run this project locally:
 
-✅ Web scraping support with BeautifulSoup
-
-✅ Data preprocessing and feature engineering
-
-
-
-🛠 Installation
-
-Clone the repository:
-
-git clone <repository-url>
-cd project
-
-
-Create and activate a virtual environment:
-
-python -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
-
-
-Install dependencies:
-
+```bash
+git clone https://github.com/Kriti4242/fake-job-posting-detector.git
+cd fake-job-posting-detector
 pip install -r requirements.txt
-
-
-
-
-🚀 Usage
-
-Run the Streamlit application:
-
 streamlit run main.py
+ ```                                                                                                              
+ ## 🔄 Project Workflow                
+ Data Collection → Data Cleaning → Feature Engineering → Model Training   
+        ↓  
+   Model Evaluation → SHAP Explainability → Streamlit Deployment                                                      📊 Evaluation Metrics
 
+Accuracy – Measures overall correctness
 
-Open the URL provided in your browser.
+Precision – Measures true positive rate
 
-Input a job description to check if it is fake or genuine.
+Recall – Measures model sensitivity
 
-View SHAP visualizations for model explanation.
+F1 Score – Harmonic mean of precision and recall
 
+ROC-AUC – Measures discrimination ability
 
-📊 Evaluation Metrics
-
-Accuracy
-
-Precision
-
-Recall
-
-F1 Score
-
-ROC-AUC Score
-
-Confusion Matrix
-
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
-
+Confusion Matrix – Visualizes true vs predicted classes
 
 📚 Libraries Used
 
-streamlit
+Streamlit – Interactive dashboard
 
-pandas, numpy
+Pandas, NumPy – Data handling and computation
 
-scikit-learn
+Scikit-learn – Machine learning models and evaluation
 
-shap, matplotlib, seaborn
+SHAP, Matplotlib, Seaborn – Model explainability and visualization
 
-beautifulsoup4, requests
+BeautifulSoup4, Requests – Web scraping and data extraction
 
-joblib
-
+Joblib – Model serialization and persistence
 
 ⚖ License
 
-
 This project is licensed under the MIT License.
+You are free to use and modify it with proper attribution.
 
+
+---             
+ 
