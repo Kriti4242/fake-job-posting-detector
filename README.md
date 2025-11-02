@@ -70,6 +70,9 @@ Joblib – Model serialization and persistence
 This project is licensed under the MIT License.
 You are free to use and modify it with proper attribution.
 
+🚀 **[Live Streamlit App](https://fakejobdetector.netlify.app/)** — Try it out now!
+
 
 ---             
  
+
