@@ -1,4 +1,8 @@
 [build]
-  command = "echo 'Skipping Python build — handled by Streamlit Cloud'"
+  base = "."
+  command = "echo 'Skipping Python setup — Streamlit handles runtime'"
   publish = "public"
   environment = { PYTHON_VERSION = "3.9" }
+
+[functions]
+  node_bundler = "esbuild"
